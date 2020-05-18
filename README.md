@@ -43,11 +43,9 @@ NOTE: Errors are usually sent back in the JSON format above. A status of false, 
 
 ## API REFERENCE
 
-### USER
+### SIGNUP
 
-#### SIGNUP
-
-POST Create Account  
+#### POST  
 https://api.tutorialapp/v1/signup
 The /signup endpoint allows you create an account with the Tutorial-app. 
 On successful creation of the account, the response returns the user name, id and success message.
@@ -116,9 +114,9 @@ Example Response
 
 
 
-#### LOGIN
+### LOGIN
 
-POST  Create Access Token  
+#### POST
 https://api.tutorialapp/v1/login
 The /login endpoint allows you sign in to your Tutorial-app account. 
 On successful authentication of user, the response returns the user name, id, token and success message.
@@ -176,7 +174,7 @@ Example Response
 
 
 
-#### API KEY REQUEST
+### API KEY REQUEST
 
 GET API Key 
 https://api.tutorialapp/v1/api/key/:token
@@ -202,9 +200,10 @@ Example Response
 }
 
 
+### USER
 
-GET All Tutors
-https://api.tutorialapp/v1/user/tutors
+#### GET All Tutors
+https://api.tutorialapp/v1/user/tutor
 The /:token endpoint returns an API key that is needed to send subsequent requests to Tutorial-app API. The token is gotten from the response to a login request for [details](#login).
 
 
@@ -251,8 +250,8 @@ Example Response
 
 
 
-GET A Single Tutor
-https://api.tutorialapp/v1/user/tutors/:id
+#### GET A Single Tutor
+https://api.tutorialapp/v1/user/tutor/:id
 The /:token endpoint returns an API key that is needed to send subsequent requests to Tutorial-app API. The token is gotten from the response to a login request for [details](#login).
 
 
@@ -285,7 +284,7 @@ Example Response
 }
 
 
-GET All Students
+#### GET All Students
 https://api.tutorialapp/v1/user/students
 The /:token endpoint returns an API key that is needed to send subsequent requests to Tutorial-app API. The token is gotten from the response to a login request for [details](#login).
 
@@ -331,8 +330,49 @@ Example Response
     ]
 }
 
-POST Register tutor to take subject 
-https://api.tutorialapp/v1/user/tutors/:categoryId/:subjectId
+#### GET A Tutor by name
+https://api.tutorialapp/v1/user/tutor/search/:tutor_name
+The /:token endpoint returns an API key that is needed to send subsequent requests to Tutorial-app API. The token is gotten from the response to a login request for [details](#login).
+
+
+Requires NO API Key in request header. All fields in BODY are required.
+
+HEADERS
+
+
+Example Request
+curl --location --request GET 'https://api.tutorialapp/v1/user/tutors' \ 
+
+Example Response 
+200 － OK 
+{
+    "Result": [
+        {
+            "_id": "5eb5957c87ef41424ca4829d",
+            "role": "tutor",
+            "firstName": "Abraham"
+        },
+        {
+            "_id": "5eb597f41435d0044c42f6e1",
+            "role": "tutor",
+            "firstName": "Albert"
+        },
+        {
+            "_id": "5eb5959f87ef41424ca4829e",
+            "role": "tutor",
+            "firstName": "Dapo"
+        },
+        {
+            "_id": "5eb598231435d0044c42f6e2",
+            "role": "tutor",
+            "firstName": "Issac"
+        }
+    ]
+}
+
+
+#### POST Register tutor to take subject 
+https://api.tutorialapp/v1/user/tutor
 This endpoint allows you to create a category for subjects.
 On successful creation of the Categor, the response returns the Category name, id and the uid.
 
@@ -347,6 +387,7 @@ BODY raw
 {
   {
     "tutor_id": "sample_id",
+    "subject_id": "sample_id"
   }	
 }
 
@@ -354,12 +395,42 @@ BODY raw
 Example Request
 {
   {
-    "category_name": "JSS",
-    "subjects":[
-      {"subject_title": "Mathematics"},
-      {"subject_title": "English"}
-    ]
-  }
+    "subject_id": "sample_id"
+  }	
+}
+
+
+Example Response 
+200 － OK 
+{
+{
+    "status": true,
+    "tutor_id": "5eb5957c87ef41424ca4829d",
+    "subject_id": "5ebd758b642b2420a4368b32",
+    "message": "Registered tutor"
+}
+}
+
+
+
+#### PATCH update a Tutor to Admin
+https://api.tutorialapp/v1/user/admin/:tutorId
+The /login endpoint allows you sign in to your Tutorial-app account. 
+On successful authentication of user, the response returns the user name, id, token and success message.
+The token is used in the body of a requset to generate an API key.
+
+Requires NO API Key in request header. All fields in BODY are required.
+
+HEADERS
+
+Content-Type   application/json
+
+BODY raw
+
+
+Example Request
+{
+  
 }
 
 Example Response 
@@ -367,31 +438,15 @@ Example Response
 {
   {
     "status": true,
-    "message": "Created category successfully"
+    "admin_id": "5eb597f41435d0044c42f6e1",
+    "message": "Admin created successfully"
   }
 }
 
 
-Example Bad Request: "subjects" field is required
-{
-  {
-    "category_name": "JSS"
-  }	
-}
 
-Example Response
-400 - Bad Request
-{
-    "error": {
-        "status": false,
-        "message": "Category must have a name and subjects"
-    }
-}
-
-
-
-PUT Update Tutor
-https://api.tutorialapp/v1/user/tutors/:id
+#### PATCH Update Registered Subject for Tutor
+https://api.tutorialapp/v1/user/tutor/subject
 This endpoint allows you to update an existing collection using the Postman Collection v2 format. For more information about the v2 schema, check the format here.
 On successful updation of the collection, the response returns the collection name, id and uid.
 Requires API Key as X-Api-Key request header or apikey URL query parameter.
@@ -404,14 +459,68 @@ Authorization
 BODY raw
 
 {
-
+     {
+    "subject_id": "5ebd758b642b2420a4368b31",
+    "tutor_id": "5eb5959f87ef41424ca4829e",
+    "subject_title": "Mathematics (newly updated sample)",
+    "subject_description": "A sample description for a second test"
+  }	
 }
 
+200 Ok Response
+{
+    "status": true,
+    "subject_id": "5ebd758b642b2420a4368b31",
+    "message": "Updated subject successfully"
+}
+
+
+#### PATCH Deactivate a tutor Tutor
+https://api.tutorialapp/v1/user/tutor/:id
+This endpoint allows you to update an existing collection using the Postman Collection v2 format. For more information about the v2 schema, check the format here.
+On successful updation of the collection, the response returns the collection name, id and uid.
+Requires API Key as X-Api-Key request header or apikey URL query parameter.
+Note: Please be careful when trying to update the collection, as the existing collection will be replaced by the request body.
+HEADERS
+
+Content-Type       application/json
+Authorization
+
+BODY raw
+
+{
+     {
+  "active": false
+  }
+}
+
+200 OK Response
+{
+    "id": "5eb597f41435d0044c42f6e1",
+    "status": true,
+    "message": "user deactivated"
+}
+
+
+#### DEL Delete Registered Subject
+https://api.tutorialapp/v1/user/:tutorId/subject/:subjectId
+This endpoint allows you to delete an existing collection.
+On successful deletion of the collection, the response returns the id and uid.
+Requires API Key as X-Api-Key request header or apikey URL query parameter.
+HEADERS
+
+X-Api-Key
+
+{
+  status: true,
+  subject_id: subject._id,
+  message: 'Successfully Unregistered subject'
+}
 
 
 ### CATEGORY
 
-GET All Categories
+#### GET All Categories
 https://api.tutorialapp/v1/category
 This endpoint allows you to create a category for subjects.
 On successful creation of the Categor, the response returns the Category name, id and the uid.
@@ -428,20 +537,15 @@ curl --location --request GET 'https://api.tutorialapp/v1/category' \
 Example Response 
 200 － OK 
 {
-  "category_id": "5eb9c67a5048bb535448af2c",
-  "subjects": [
-    {
-      "subjectTitle": "Mathematics",
-      "subjectId": "5eb9c67b5048bb535448af2d"
-    },
-    {
-      "subjectTitle": "English",
-      "subjectId": "5eb9c67b5048bb535448af2e"
-    }
-  ]
+    "categories": [
+        {
+            "_id": "5eb9c67a5048bb535448af2c",
+            "categoryName": "Primary"
+        }
+    ]
 }
 
-POST Create Category 
+#### POST Create Category 
 https://api.tutorialapp/v1/category
 This endpoint allows you to create a category for subjects.
 On successful creation of the Categor, the response returns the Category name, id and the uid.
@@ -479,10 +583,11 @@ Example Request
 Example Response 
 200 － OK 
 {
-  {
+ {
     "status": true,
+    "category_Id": "5ec1c4f1206c080a708b59aa",
     "message": "Created category successfully"
-  }
+}
 }
 
 
@@ -503,7 +608,7 @@ Example Response
 }
 
 
-PUT Update Category
+#### PATCH Update Category name
 https://api.tutorialapp/v1/category
 This endpoint allows you to update an existing collection using the Postman Collection v2 format. For more information about the v2 schema, check the format here.
 On successful updation of the collection, the response returns the collection name, id and uid.
@@ -518,20 +623,51 @@ BODY raw
 
 {
   {
-    "category_name": "JSS",
-    "subjects":[
-      {"subject_title": "Mathematics"},
-      {"subject_title": "English"}
-    ]
+    "category_id": "",
+    "category_name": "JSS"
   }
 }
 
 
+Example Request
+{
+  {
+    "category_id": "",
+    "category_name": "JSS"
+  }
+}
+
+Example Response 
+200 － OK 
+{
+    "status": true,
+    "category_Id": "5eb9c67a5048bb535448af2c",
+    "message": "Updated category successfully"
+}
+
+
+
+#### DEL Delete a Category by id 
+https://api.tutorialapp/v1/category/:id
+This endpoint allows you to delete an existing collection.
+On successful deletion of the collection, the response returns the id and uid.
+Requires API Key as X-Api-Key request header or apikey URL query parameter.
+HEADERS
+
+X-Api-Key
+
+Example Response
+{
+    "status": true,
+    "category_id": "5eb9c67a5048bb535448af2c",
+    "message": "Category deleted successfully"
+}
+
 
 ### SUBJECT
 
-POST Create subject
-https://api.tutorialapp/v1/category/subjects
+#### POST Create subject
+https://api.tutorialapp/v1/category/subject
 This endpoint allows you to create a category for subjects.
 On successful creation of the Categor, the response returns the Category name, id and the uid.
 
@@ -545,7 +681,7 @@ Content-Type        application/json
 BODY raw
 {
   {
-    "category_name": "JSS",
+    "category_id": "738323hdhd99",
     "subject_title": "Basic Science"
   }	
 }
@@ -587,8 +723,8 @@ Example Response
 }
 
 
-GET All Subjects by Category
-https://api.tutorialapp/v1/:categoryId/subjects
+#### GET All Subjects by Category
+https://api.tutorialapp/v1/:categoryId/subject
 This endpoint allows you to create a category for subjects.
 On successful creation of the Categor, the response returns the Category name, id and the uid.
 
@@ -621,8 +757,8 @@ Example Response
 }
 
 
-GET Subjects in a Category by id
-https://api.tutorialapp/v1/category/subjects/:id
+#### GET Subjects in a Category by id
+https://api.tutorialapp/v1/category/subject/:id
 This endpoint allows you to create a category for subjects.
 On successful creation of the Categor, the response returns the Category name, id and the uid.
 
@@ -655,8 +791,42 @@ Example Response
 }
 
 
-GET Subjects in a Category by name
-https://api.tutorialapp/v1/category/subjects/search/:subjectName
+#### GET Search for a Subject by name
+https://api.tutorialapp/v1/category/subject/search/:subject_name
+This endpoint allows you to create a category for subjects.
+On successful creation of the Categor, the response returns the Category name, id and the uid.
+
+Requires API Key as Authorization request header.
+HEADERS
+
+Authorization       API_Key
+
+curl --location --request GET 'https://api.tutorialapp/v1/:categoryId/subjects' \
+--header 'Authorization: '
+
+
+Example Response 
+200 － OK 
+{
+    "Result": [
+        {
+            "_id": "5ebd758b642b2420a4368b31",
+            "subjectTitle": "Mathematics (final update test)"
+        },
+        {
+            "_id": "5ebdbdeeb04c960afc149660",
+            "subjectTitle": "Mathematics 2"
+        },
+        {
+            "_id": "5ec008351bf98e0f90edab54",
+            "subjectTitle": "Test Subject"
+        }
+    ]
+}
+
+
+#### GET Tutors taking a Subject
+https://api.tutorialapp/v1/category/:subjectId/tutors
 This endpoint allows you to create a category for subjects.
 On successful creation of the Categor, the response returns the Category name, id and the uid.
 
@@ -688,12 +858,142 @@ Example Response
   }
 }
 
+#### PATCH Update a subject
+https://api.tutorialapp/v1/user/tutor/subject
+This endpoint allows you to update an existing collection using the Postman Collection v2 format. For more information about the v2 schema, check the format here.
+On successful updation of the collection, the response returns the collection name, id and uid.
+Requires API Key as X-Api-Key request header or apikey URL query parameter.
+Note: Please be careful when trying to update the collection, as the existing collection will be replaced by the request body.
+HEADERS
 
- 
+Content-Type       application/json
+Authorization
+
+BODY raw
+
+{
+     {
+    "subject_id": "5ebd758b642b2420a4368b31",
+    "subject_title": "Mathematics (newly updated sample)",
+    "subject_description": "A sample description for a second test"
+  }	
+
+}
+
+200 Ok Response
+{
+    "status": true,
+    "subject_id": "5ec008351bf98e0f90edab54",
+    "message": "Update successful"
+}
+
+
+#### DEL Delete a Subject
+https://api.tutorialapp/v1/category/subject/:id
+This endpoint allows you to delete an existing collection.
+On successful deletion of the collection, the response returns the id and uid.
+Requires API Key as X-Api-Key request header or apikey URL query parameter.
+HEADERS
+
+X-Api-Key
+
+{
+  status: true,
+  subject_id: subject_id,
+  message: 'Successfully Unregistered subject'
+}
+
+
+
 ### LESSON
 
-POST Create Lesson
-https://api.tutorialapp/v1/category/subjects/lesson
+#### GET All lessons
+https://api.tutorialapp/v1/user/lesson
+This endpoint allows you to create a category for subjects.
+On successful creation of the Categor, the response returns the Category name, id and the uid.
+
+Requires API Key as Authorization request header.
+HEADERS
+
+Authorization       API_Key
+
+curl --location --request GET 'https://api.tutorialapp/v1/:categoryId/subjects' \
+--header 'Authorization: '
+
+
+Example Response 
+200 － OK 
+"status": true,
+    "lessons": [
+        {
+            "_id": "5ebf6d873676683d6c386532",
+            "date": "16/05/2020",
+            "tutor": "5eb5959f87ef41424ca4829e",
+            "subject": "5ebd758b642b2420a4368b31",
+            "student": "5eb5988f1435d0044c42f6e4",
+            "createdAt": "2020-05-16T04:35:19.595Z",
+            "updatedAt": "2020-05-16T04:45:47.909Z",
+            "__v": 0
+        },
+        {
+            "_id": "5ec02d27ab1a6f138c801222",
+            "date": "12/05/2020",
+            "tutor": "5eb5959f87ef41424ca4829e",
+            "subject": "5ebd758b642b2420a4368b31",
+            "student": "5eb5988f1435d0044c42f6e4",
+            "createdAt": "2020-05-16T18:12:55.189Z",
+            "updatedAt": "2020-05-16T18:12:55.189Z",
+            "__v": 0
+        },
+        {
+            "_id": "5ec02dd6ab1a6f138c801223",
+            "date": "12/05/2020",
+            "tutor": "5eb5959f87ef41424ca4829e",
+            "subject": "5ebd758b642b2420a4368b31",
+            "student": "5eb5988f1435d0044c42f6e4",
+            "createdAt": "2020-05-16T18:15:50.827Z",
+            "updatedAt": "2020-05-16T18:15:50.827Z",
+            "__v": 0
+        }
+    ]
+}
+
+
+#### GET A lesson by id
+https://api.tutorialapp/v1/user/lesson/:id
+This endpoint allows you to create a category for subjects.
+On successful creation of the Categor, the response returns the Category name, id and the uid.
+
+Requires API Key as Authorization request header.
+HEADERS
+
+Authorization       API_Key
+
+curl --location --request GET 'https://api.tutorialapp/v1/:categoryId/subjects' \
+--header 'Authorization: '
+
+
+Example Response 
+200 － OK 
+{
+    "status": true,
+    "lesson": [
+        {
+            "_id": "5ec02d27ab1a6f138c801222",
+            "date": "12/05/2020",
+            "tutor": "5eb5959f87ef41424ca4829e",
+            "subject": "5ebd758b642b2420a4368b31",
+            "student": "5eb5988f1435d0044c42f6e4",
+            "createdAt": "2020-05-16T18:12:55.189Z",
+            "updatedAt": "2020-05-16T18:12:55.189Z",
+            "__v": 0
+        }
+    ]
+}
+
+
+#### POST Create Lesson
+https://api.tutorialapp/v1/user/lesson
 This endpoint allows you to create a category for subjects.
 On successful creation of the Categor, the response returns the Category name, id and the uid.
 
@@ -732,25 +1032,61 @@ Example Request
 Example Response 
 200 － OK 
 {
-  {
-    "status": true,
-    "message": "Subject created successfully"
-  }
-}
-
-
-Example Bad Request: "subjects" field is required
 {
-  {
-    "category_name": "JSS"
-  }	
+    "status": true,
+    "lesson_id": "5ec02d27ab1a6f138c801222",
+    "message": "Successfully booked lesson"
 }
+}
+
+
+#### PATCH Update a lesson by id
+https://api.tutorialapp/v1/user/lesson/:id
+This endpoint allows you to update an existing collection using the Postman Collection v2 format. For more information about the v2 schema, check the format here.
+On successful updation of the collection, the response returns the collection name, id and uid.
+Requires API Key as X-Api-Key request header or apikey URL query parameter.
+Note: Please be careful when trying to update the collection, as the existing collection will be replaced by the request body.
+HEADERS
+
+Content-Type       application/json
+Authorization
+
+BODY raw
+
+{
+   "date": "12/05/2020"	
+
+}
+
+200 Ok Response
+{
+    "status": true,
+    "lesson": {
+        "_id": "5ec02d27ab1a6f138c801222",
+        "date": "29/05/2020",
+        "tutor": "5eb5959f87ef41424ca4829e",
+        "subject": "5ebd758b642b2420a4368b31",
+        "student": "5eb5988f1435d0044c42f6e4",
+        "createdAt": "2020-05-16T18:12:55.189Z",
+        "updatedAt": "2020-05-16T18:29:05.832Z",
+        "__v": 0
+    },
+    "message": "Update successful"
+}
+
+
+#### DEL Delete a lesson by id 
+https://api.tutorialapp/v1/user/lesson/:id
+This endpoint allows you to delete an existing collection.
+On successful deletion of the collection, the response returns the id and uid.
+Requires API Key as X-Api-Key request header or apikey URL query parameter.
+HEADERS
+
+X-Api-Key
 
 Example Response
-400 - Bad Request
 {
-    "error": {
-        "status": false,
-        "message": "Category must have a name and subjects"
-    }
+    "status": true,
+    "lesson_id": "5ec1ad554e932a3f5c41b515",
+    "message": "Successfully deleted lesson"
 }

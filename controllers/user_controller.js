@@ -5,7 +5,7 @@ const {tutorRegisterValidator} = require('../middleware/user_middleware')
 
 module.exports ={
     createAdmin: (req, res, next)=>{
-        const id = req.body.id;
+        const id = req.params.id;
         const isAdmin = req.user.isAdmin;
         if (!isAdmin) {
             return res.status(400).send({
@@ -30,7 +30,7 @@ module.exports ={
                             message: 'User is already an Admin or User is not a tutor'
                         })
                     }
-                    user.updateOne({isAdmin: true, role: 'Admin'})
+                    user.updateOne({isAdmin: true})
                     .then(
                         result => {
                             if (result.nModified === 0) {
@@ -47,18 +47,30 @@ module.exports ={
                         () => {
                             return res.status(200).send({ 
                                 status: true,
+                                admin_id: user._id,
                                 message: "Admin created successfully"
                             })
                         }
                     ).catch(err => console.log(err))
                 }
             }
-        )
+        ).catch(err =>{
+            req.err ={
+                status: false,
+                message: 'Invalid Id',
+                code: 400
+            }
+            next()
+            return
+        })
     },
 
 
     retrieveAllTutors: (req, res, next) =>{
-        User.find({role: 'tutor'},'_id isAdmin active categories subjects lessons email role userName firstName lastName')
+        if (req.user.isAdmin == false) {
+            res.status(403).send({status: false, message: 'Authorization Error'})
+        }
+        User.find({role: 'tutor'})
         .then(
             user =>{
                 if(!user){
@@ -73,11 +85,17 @@ module.exports ={
                     Tutors: user
                 })
             }
-        ).catch(err =>{console.log(err)})
+        ).catch(err =>{
+            res.status(500).send({status:false, message: err})
+        })
     },
 
     
     retrieveTutorsById: (req, res, next) =>{
+        if (req.user.isAdmin == false) {
+            res.status(403).send({statu: false, message: 'Authorization error'})
+            return
+        }
         const id = req.params.id;
         if(!id){
             req.err ={
@@ -88,14 +106,16 @@ module.exports ={
             next()
             return
         }
-        User.findById(id, '_id isAdmin active categories subjects lessons email role userName firstName lastName')
+        User.findById(id)
         .then(
             user =>{
                 res.status(200).send({
                     Tutor: user
                 })
             }
-        )
+        ).catch(err =>{
+            res.status(400).send({status: false, message: 'Invalid Id'})
+        })
     },
 
 
@@ -145,7 +165,7 @@ module.exports ={
                     else if(user.role !== 'tutor'){
                         req.err={
                             status: false,
-                            message:'You can only deactivate a tutor',
+                            message:'You can only activate or deactivate a tutor',
                             code: 405
                         }
                         next()
@@ -155,7 +175,7 @@ module.exports ={
                     user.save()
                     .then(
                         doc =>{
-                            if(active){
+                            if(user.active){
                                 res.status(200).send({
                                     id: user._id,
                                     status: true,
@@ -172,14 +192,20 @@ module.exports ={
                         }
                     ).catch(err => console.log(err))
                 }
-            ).catch(err => console.log(err))
+            ).catch(err => {
+                res.status(400).send({status: false, message: 'Invalid Id'})
+            })
         }
 
     },
 
 
     retrieveAllStudents: (req, res, next) =>{
-        User.find({role: 'student'},'_id isAdmin active categories subjects lessons email role userName firstName lastName')
+        if (req.user.isAdmin) {
+            res.status(403).send({status: false, message: 'Authorization Error'})
+            return
+        }
+        User.find({role: 'student'})
         .then(
             user =>{
                 if(!user){
@@ -194,12 +220,13 @@ module.exports ={
                     Students: user
                 })
             }
-        ).catch(err =>{console.log(err)})
+        ).catch(err =>{
+            res.status(500).send({status: false, message: err})
+        })
     },
 
 
     registerTutor: async (req, res, next) =>{
-        const categoryId = req.body.category_id;
         const subjectId = req.body.subject_id;
         const tutorId = req.body.tutor_id;
         if (req.user.role != 'tutor') {
@@ -211,7 +238,7 @@ module.exports ={
             next()
             return
         }
-        else if (!categoryId || !subjectId || !tutorId) {
+        else if (!subjectId || !tutorId) {
             req.err = {
                 status: false,
                 message: 'All fields required',
@@ -221,31 +248,51 @@ module.exports ={
             return
         }
         //Returns an array of docs for tutor, subject and category
-        const docsArray = await tutorRegisterValidator(req, tutorId, subjectId, categoryId);
+        const docsArray = await tutorRegisterValidator(req, tutorId, subjectId);
         if (docsArray[0].valid == false) {
             next()
         }
         else{
             const tutorDoc = docsArray[1];
-            const subjectDoc = docsArray[3];
+            const subjectDoc = docsArray[2];
             const tutorSubjects = docsArray[1].subjects;
-            const subjectTutors = docsArray[3].tutors;
+            const subjectTutors = docsArray[2].tutors;
             subjectTutors.push(tutorDoc._id);
             tutorSubjects.push(subjectDoc._id);
 
-            await tutorDoc.updateOne({subjects: tutorSubjects})
-            await subjectDoc.updateOne({tutors: subjectTutors})
-            return res.status(200).send({
-                status:true,
-                tutor_id: tutorDoc._id,
-                subject_id: subjectDoc._id,
-                message: 'Registered tutor'
-            })
+            const result = await tutorDoc.updateOne({subjects: tutorSubjects});
+            const result2 = await subjectDoc.updateOne({tutors: subjectTutors});
+            if (result.nModified == 1 && result2.nModified == 1) {
+                return res.status(200).send({
+                    status:true,
+                    tutor_id: tutorDoc._id,
+                    subject_id: subjectDoc._id,
+                    message: 'Registered tutor'
+                })
+            }
+            else{
+                req.err ={
+                    status: false,
+                    message: 'Error registering subject',
+                    code: 500
+                }
+                next()
+                return
+            }
         }
     },
 
 
     retrieveRegisteredSubjects: (req, res, next)=>{
+        if (req.user.role != 'tutor') {
+            req.err ={
+                status: false,
+                message: 'Authorization Error',
+                code: 403
+            }
+            next()
+            return
+        }
         const tutorId = req.params.tutor;
         if (!tutorId) {
             req.err = {
@@ -259,9 +306,17 @@ module.exports ={
         User.findById(tutorId)
         .then(
             tutor =>{
+                if (!tutor) {
+                    req.err ={
+                        status: false,
+                        message: 'Tutor not found',
+                        code: 404
+                    }
+                    next()
+                    return
+                }
                 tutor.populate('subjects',(err, doc)=>{
                     if (err) {
-                        console.log(err)
                         res.status(500).send({
                             status: false,
                             message: 'Error retreiving registered subjects'
@@ -279,7 +334,7 @@ module.exports ={
         ).catch( err =>{
             req.err = {
                 status: false,
-                message: 'Tutor not found',
+                message: 'Invalid Id',
                 code: 403
             }
             next();
@@ -291,8 +346,11 @@ module.exports ={
         const subjectId = req.body.subject_id;
         const tutorId = req.body.tutor_id;
         const subjectTitle = req.body.subject_title;
-        const description = req.body.subject_description
-        if (!categoryName || !subjectId || !tutorId) {
+        const description = req.body.subject_description;
+        if (req.user.role != 'tutor') {
+            res.status(403).send({status: false, message:'Authorization Error'})
+        }
+        if (!subjectTitle || !subjectId || !tutorId || !description) {
             req.err = {
                 status: false,
                 message: 'All fields required',
@@ -301,42 +359,115 @@ module.exports ={
             next()
             return
         }
-        const docsArray = await tutorRegisterValidator(req, tutorId, subjectId, categoryName);
-        if (docsArray[0].valid == false) {
+        User.findById(tutorId)
+        .then( async tutor  =>{
+            if(!tutor){
+                req.err = {
+                    status: false,
+                    message: 'Tutor not found',
+                    code: 404
+                }
+                next()
+                return
+            }
+            else if (tutor.role != 'tutor') {
+                req.err = {
+                    status: false,
+                    message: 'Id does not belong to a tutor',
+                    code: 404
+                }
+                next()
+                return
+            }
+            let validSubject = false
+            const tutorSubjects = tutor.subjects
+            tutorSubjects.forEach(element =>{
+                if (element == subjectId) {
+                    validSubject = true
+                    return
+                }
+            })
+            if (!validSubject) {
+                req.err ={
+                    status: false,
+                    message: 'Tutor is not registered to take this subject',
+                    code:404
+                }
+                next()
+                return
+            }
+            const subjectDoc = await  Subject.findByIdAndUpdate(subjectId, 
+                {subjectTitle: subjectTitle, description: description}, 
+                {new: true, useFindAndModify: false});
+            
+            if (subjectDoc.subjectTitle == subjectTitle && subjectDoc.description == description) {
+                res.status(200).send({
+                    status: true,
+                    subject_id: subjectDoc._id,
+                    message: 'Updated subject successfully'
+                })
+            }
+            else{
+                res.status(500).send({
+                    status: false,
+                    message:'Error updating subject'
+                })
+            }
+        }
+        ).catch(err => {
+            req.err ={
+                status: false,
+                message: 'Invalid Id sent',
+                code: 400
+            }
             next()
-        }
-        else{
-
-        }
+            return
+        })
     },
 
 
     retrieveTutorsBySubject:  async (req, res, next) =>{
-        const categoryName = req.params.category;
+        if (req.user.role != 'student') {
+            res.status(403).send({status: false, message: 'Authorization Error'})
+        }
         const subjectId = req.params.subjectId;
-        Category.findOne({categoryName})
+        Subject.findOne({_id: subjectId})
         .then(
-            async category =>{
-                if (!category) {
+            async subject =>{
+                if (!subject) {
                     req.err = {
                         status: false,
-                        message: 'Category not found',
+                        message: 'Subject not found',
                         code: 404
                     }
                     next();
                     return
                 }
-                category.populate('subjects', (err, doc)=>{
+                subject.populate('tutors', (err, doc)=>{
                     if (err) {
-                        console.log(err)
+                        req.err ={
+                            status: false,
+                            message: 'Error retrieving data',
+                            code: 500
+                        }
+                        next()
                     }
                     else{
-                        console.log(doc)
+                        res.status(200).send({
+                            status: true,
+                            Tutors: doc.tutors
+                        })
                     }
 
                 })
             }
-        ).catch(err => console.log(err))
+        ).catch(err => {
+            req.err = {
+                status: false,
+                message: 'Invalid id',
+                code: 400
+            }
+            next()})
     },
 
 
@@ -348,17 +479,17 @@ module.exports ={
                 message: 'Missing required search parameter'
             })
         }
-        User.find({}, 'firstName')
+        User.find({}, 'firstName role')
         .then( tutors =>{
             const tutorArray =[];
             tutors.forEach(element=>{
-                if(element.firstName.toLowerCase().includes(tutorName.toLowerCase())){
+                if(element.firstName.toLowerCase().includes(tutorName.toLowerCase()) && element.role =='tutor'){
                     tutorArray.push(element)
                 }
             })
             if (tutorArray.length == 0) {
                 return res.status(404).send({
-                    Result: 'No tutor found'
+                    Result: 'No match found'
                 })
             }
             tutorArray.sort((a, b) => (a.firstName > b.firstName) ? 1 : 
@@ -367,7 +498,7 @@ module.exports ={
                 Result: tutorArray
             })
         }).catch( err =>{
-            console.log(err)
+            res.status(500).send({status: false, message: err});
         })
     },
 

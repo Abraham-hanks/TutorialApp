@@ -24,7 +24,7 @@ module.exports = {
             if (!user.active) {
                 res.status(403).send( {
                     status: false,
-                    message: 'API key deactivated'
+                    message: 'User deactivated'
                 })
             }
             else{
@@ -68,7 +68,7 @@ module.exports = {
         const data = {};
         data.email = req.body.email;
         data.password = req.body.password;
-        data.role = req.body.role;
+        data.role = req.body.role.toLowerCase();
         data.userName = req.body.user_name;
         data.firstName = req.body.first_name;
         data.lastName = req.body.last_name;
@@ -186,15 +186,16 @@ module.exports = {
                             message:'login successful'
                         });
                 })
-            }).catch(err => console.log(err));
+            }
+        ).catch(err => console.log(err));
     },
 
     generateAPI_KEY: (req, res, next) =>{
         if (!req.user._id) {
             req.err ={
                 status: false,
-                message: 'Unknown error',
-                code: 500
+                message: 'Invalid token',
+                code: 400
             }
             next()
             return
@@ -206,7 +207,7 @@ module.exports = {
                 if (!user) {
                     req.err = {
                         status: false,
-                        message: "Token does not belong to a valid user",
+                        message: "Token does not belong to an existing user",
                         code: 404
                     }
                     next()

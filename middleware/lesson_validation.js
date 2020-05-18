@@ -131,13 +131,10 @@ const validateUsers =  async function(req, res){
     return docsArray;
 }
 
-const validateRequestData = function(req, res){
+const validateRequestData = function(req, date, tutor_id, student_id, subject_id){
     const dateRegEx = RegExp(/^(?:(?:31(\/|-|\.)(?:0?[13578]|1[02]))\1|(?:(?:29|30)(\/|-|\.)(?:0?[1,3-9]|1[0-2])\2))(?:(?:1[6-9]|[2-9]\d)?\d{2})$|^(?:29(\/|-|\.)0?2\3(?:(?:(?:1[6-9]|[2-9]\d)?(?:0[48]|[2468][048]|[13579][26])|(?:(?:16|[2468][048]|[3579][26])00))))$|^(?:0?[1-9]|1\d|2[0-8])(\/|-|\.)(?:(?:0?[1-9])|(?:1[0-2]))\4(?:(?:1[6-9]|[2-9]\d)?\d{2})$/);
-    const date = req.body.date;
-    const tutor_id = req.body.tutor_id;
-    const student_id = req.body.student_id;
     const subject = req.body.subject_id;
-    if(!date || !tutor_id || !student_id || !subject){
+    if(!date || !tutor_id || !student_id || !subject_id){
         req.err ={
             status: false,
             message:'All field required',
@@ -198,5 +195,78 @@ const updateUsersAndSubject= async (data, lesson) =>{
     return data;       
 }
 
+const deleteLessonHandler = async (req, lessonId)=>{
+    let valid = false;
+    const doc = await Lesson.findById(lessonId)
+    .then( async lesson =>{
+        if (!lesson) {
+            req.err ={
+                status: false,
+                message: 'Lesson not found',
+                code: 404
+            }
+            return
+        }
+        //get the _id student, tutor and subject associated with lesson
+        const student = lesson.student;
+        const tutor = lesson.tutor;
+        const subject = lesson.subject;
+        //get individual docs of each
+        const studentDoc = await User.findById(student);
+        const tutorDoc = await User.findById(tutor);
+        const subjectDoc = await Subject.findById(subject);
+        //get each array of lessons 
+        const studentLessons = studentDoc.lessons;
+        const tutorLessons = tutorDoc.lessons;
+        const subjectLessons = subjectDoc.lessons;
+        //remove the lesson to be deleted
+        const filteredStudentLessons = studentLessons.filter( lesson => lesson != lessonId);
+        const filteredTutorLessons = tutorLessons.filter( lesson => lesson != lessonId);
+        const filteredSubjectLessons = subjectLessons.filter( lesson => lesson != lessonId);
+        //update the individual docs
+        const result = await studentDoc.updateOne({lessons: filteredStudentLessons});
+        const result2 = await tutorDoc.updateOne({lessons: filteredTutorLessons});
+        const result3 = await subjectDoc.updateOne({lessons: filteredSubjectLessons});
+        if (result.nModified == 1 && result2.nModified == 1 && result3.nModified == 1) {
+            valid = true;
+        }
+        return
+    }).catch(err=>{
+        req.err ={
+            status: false,
+            message: 'Invalid id',
+            code: 400
+        }
+        return
+    })
 
-module.exports = {validateRequestData, validateUsers, updateUsersAndSubject}
+    return valid
+}
+
+const deleteMultipleLesson = async (lessonArray) =>{
+    Lesson.find({ _id: {$in: lessonArray } }).then( async result =>{
+        result.forEach(async element =>{
+            const tutor = element.tutor
+            const student = element.student
+            await User.findByIdAndUpdate(
+                { _id: tutor}, 
+                { $pull: { lessons: { $in: lessonArray } } }, 
+                {new: true, useFindAndModify: false}
+            ).catch(err => console.log(err))
+            await User.findByIdAndUpdate(
+                { _id: student}, 
+                { $pull: { lessons: { $in: lessonArray } } },
+                {new: true, useFindAndModify: false}
+            ).catch(err => console.log(err))
+        })
+
+        await Lesson.deleteMany({ _id: {$in: lessonArray } }, function(err, result) {
+            if (err) {
+                console.log(err)
+            } 
+        });
+    }).catch(err => console.log(err))
+}
+
+
+module.exports = {validateRequestData, validateUsers, updateUsersAndSubject, deleteLessonHandler, deleteMultipleLesson}
